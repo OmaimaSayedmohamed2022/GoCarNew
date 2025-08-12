@@ -5,6 +5,7 @@ import {
   getClientById,
   updateClient,
   deleteClient,
+  uploadImage
 } from "../controllers/clientController.js";
 import { verifyToken } from '../middlewares/authMiddleware.js';
 
@@ -19,5 +20,8 @@ router.get("/getClient/:id", getClientById);
 router.patch("/update/:id", updateClient);
 
 router.delete("/delete/:id", deleteClient);
+
+// add  image
+router.post("/:role?/:id?", verifyToken, upload.single("image"), uploadImage);
 
 export default router;
