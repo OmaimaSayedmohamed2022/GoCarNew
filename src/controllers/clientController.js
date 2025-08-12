@@ -98,7 +98,7 @@ export const uploadImage = async (req, res) => {
       role = req.params.role;
       id = req.params.id;
     } else {
-
+  
       role = req.user.role;
       id = req.user.id;
     }
@@ -106,21 +106,14 @@ export const uploadImage = async (req, res) => {
     if (!req.file) {
       return res.status(400).json({ message: "No file uploaded" });
     }
-    
 
     const imageUrl = await uploadToCloudinary(req.file);
 
-  
     let model;
-    if (role === "client") {
-      model = Client;
-    } else if (role === "driver") {
-      model = Driver;
-    } else {
-      return res.status(400).json({ message: "Invalid role. Must be 'client' or 'driver'." });
-    }
+    if (role === "client") model = Client;
+    else if (role === "driver") model = Driver;
+    else return res.status(400).json({ message: "Invalid role" });
 
-    
     const updatedDoc = await model.findByIdAndUpdate(
       id,
       { image: imageUrl },
@@ -132,7 +125,7 @@ export const uploadImage = async (req, res) => {
     }
 
     res.status(200).json({
-      message: `${role} image uploaded/updated successfully`,
+      message: `${role} image uploaded successfully`,
       data: updatedDoc,
     });
   } catch (error) {

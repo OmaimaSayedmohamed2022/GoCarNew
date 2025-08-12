@@ -23,6 +23,9 @@ router.patch("/update/:id", updateClient);
 router.delete("/delete/:id", deleteClient);
 
 // add  image
-router.post("/:role?/:id?", verifyToken, upload.single("image"), uploadImage);
+router.post("/upload/image", verifyToken, upload.single("image"), uploadImage);
+
+//  for dashboard
+router.post("/:role/:id", verifyToken, upload.single("image"), uploadImage);
 
 export default router;
