@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs";
 import logger from "../utils/logger.js";
 import Client from "../models/clientModel.js";
+import Driver from "../models/driverModel.js";
 import config from '../utils/config.js';
 import { generateToken } from "../middlewares/authMiddleware.js";
 
@@ -81,4 +82,61 @@ export const deleteClient = async (req, res) => {
         logger.error(`Error deleting client: ${error.message}`);
         res.status(500).json({ success: false, message: error.message });
     }
+};
+
+
+
+
+
+// add image to  both client and driver
+
+export const uploadImage = async (req, res) => {
+  try {
+    let role, id;
+
+    if (req.params.role && req.params.id) {
+      role = req.params.role;
+      id = req.params.id;
+    } else {
+
+      role = req.user.role;
+      id = req.user.id;
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ message: "No file uploaded" });
+    }
+    
+
+    const imageUrl = await uploadToCloudinary(req.file);
+
+  
+    let model;
+    if (role === "client") {
+      model = Client;
+    } else if (role === "driver") {
+      model = Driver;
+    } else {
+      return res.status(400).json({ message: "Invalid role. Must be 'client' or 'driver'." });
+    }
+
+    
+    const updatedDoc = await model.findByIdAndUpdate(
+      id,
+      { image: imageUrl },
+      { new: true }
+    );
+
+    if (!updatedDoc) {
+      return res.status(404).json({ message: `${role} not found` });
+    }
+
+    res.status(200).json({
+      message: `${role} image uploaded/updated successfully`,
+      data: updatedDoc,
+    });
+  } catch (error) {
+    console.error("Error uploading image:", error);
+    res.status(500).json({ message: error.message });
+  }
 };
