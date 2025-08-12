@@ -8,6 +8,7 @@ import {
   uploadImage
 } from "../controllers/clientController.js";
 import { verifyToken } from '../middlewares/authMiddleware.js';
+import upload from "../middlewares/uploadImage.js"
 
 const router = express.Router();
 
