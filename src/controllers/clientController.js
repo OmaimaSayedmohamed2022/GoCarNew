@@ -4,6 +4,7 @@ import Client from "../models/clientModel.js";
 import Driver from "../models/driverModel.js";
 import config from '../utils/config.js';
 import { generateToken } from "../middlewares/authMiddleware.js";
+import uploadToCloudinary from "../middlewares/uploadToCloudinary.js";
 
 export const register = async (req, res) => {
     try {
