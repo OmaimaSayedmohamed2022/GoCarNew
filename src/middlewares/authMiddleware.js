@@ -42,10 +42,10 @@ export const generateToken = (user) => {
   return jwt.sign(
     {
       id: user._id,
-      phoneNumber: user.phoneNumber,  // لو عايز تضيف بيانات تانية
+      phoneNumber: user.phoneNumber,  
       role: user.role,
     },
     process.env.JWT_SECRET,
-    { expiresIn: "1h" }  // تقدر تغير مدة الصلاحية حسب حاجتك
+    { expiresIn: "1h" }  
   );
 };
