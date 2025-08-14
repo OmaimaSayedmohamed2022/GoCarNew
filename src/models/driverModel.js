@@ -13,6 +13,7 @@ const driverSchema = new mongoose.Schema({
   acceptCash: { type: Boolean, default: true },
   trips: [{ type: mongoose.Schema.Types.ObjectId, ref: "Trip" }],
   otp: { type: String },
+  image:{type:String}
 }, { timestamps: true });
 
 export default mongoose.model("Driver", driverSchema);

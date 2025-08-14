@@ -1,5 +1,6 @@
 import jwt from "jsonwebtoken";
-import User from "../models/driverModel.js";
+import Client from "../models/clientModel.js";
+import Driver from "../models/driverModel.js";
 
 export const verifyToken = async (req, res, next) => {
   try {
@@ -12,7 +13,15 @@ export const verifyToken = async (req, res, next) => {
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    const user = await User.findById(decoded.id);
+    let user;
+    if (decoded.role === "client") {
+      user = await Client.findById(decoded.id);
+    } else if (decoded.role === "driver") {
+      user = await Driver.findById(decoded.id);
+    } else {
+      return res.status(400).json({ message: "Invalid role in token." });
+    }
+
     if (!user) {
       return res.status(404).json({ message: "User not found." });
     }
@@ -29,26 +38,14 @@ export const verifyToken = async (req, res, next) => {
     res.status(401).json({ message: "Invalid token." });
   }
 };
-
-export const authorizeRole = (roles) => {
-  return (req, res, next) => {
-    if (!roles.includes(req.user.role)) {
-      return res
-        .status(403)
-        .json({ message: "Access denied. Insufficient permissions." });
-    }
-    next();
-  };
-};
-
 export const generateToken = (user) => {
   return jwt.sign(
     {
       id: user._id,
-      phoneNumber: user.phoneNumber,
+      phoneNumber: user.phoneNumber,  
       role: user.role,
     },
     process.env.JWT_SECRET,
-    { expiresIn: "1h" }
+    { expiresIn: "1h" }  
   );
 };
