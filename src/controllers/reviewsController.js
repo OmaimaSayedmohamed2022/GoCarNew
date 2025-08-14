@@ -43,7 +43,7 @@ export const getReviews = async (req, res) => {
       (client.reviews.length || 1);
       
 // count reviews
-    const totalReviews = reviews.length;
+    const totalReviews = client.reviews.length;
 
     res.status(200).json({
       clientId: client._id,
