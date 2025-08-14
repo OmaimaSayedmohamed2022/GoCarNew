@@ -26,6 +26,6 @@ router.delete("/delete/:id", deleteClient);
 router.post("/upload/image", verifyToken, upload.single("image"), uploadImage);
 
 //  for dashboard
-router.post("/:role/:id", verifyToken, upload.single("image"), uploadImage);
+router.post("/:role/:id",  upload.single("image"), uploadImage);
 
 export default router;
