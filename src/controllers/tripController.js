@@ -132,21 +132,36 @@ export const completeTrip = async (req, res) => {
 };
 
 // Get all trips for a client or driver
-export const getMyTrips = async (req, res) => {
+const getTrips = async (req, res) => {
   try {
-    const { userId, role } = req.query;
-    const filter = role === "driver" ? { driverId: userId } : { client: userId };
+    const { role, userId, status } = req.query;
 
-    const trips = await Trip.find(filter)
-      .sort({ createdAt: -1 })
-      .populate("client driverId driverShift");
+    let filter = {};
 
-    res.status(200).json({ success: true, trips });
+    if (role === "driver") {
+      filter.driverId = userId;
+    } else if (role === "client") {
+      filter.clientId = userId;
+    }
+
+    if (status) {
+      filter.status = status.charAt(0).toUpperCase() + status.slice(1); // Capitalize
+    }
+
+    const trips = await Trip.find(filter);
+
+    res.json({
+      success: true,
+      trips,
+    });
   } catch (error) {
-    logger.error("Error fetching trips:", error);
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
+
 
 
 
