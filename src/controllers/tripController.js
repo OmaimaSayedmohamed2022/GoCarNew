@@ -139,7 +139,7 @@ export const getMyTrips = async (req, res) => {
     let filter = {
       $or: [
         { driverId: userId },
-        { clientId: userId }
+        { client: userId }
       ]
     };
 
