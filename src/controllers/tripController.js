@@ -134,18 +134,17 @@ export const completeTrip = async (req, res) => {
 // Get all trips for a client or driver
 export const getMyTrips = async (req, res) => {
   try {
-    const { role, userId, status } = req.query;
+    const { userId, status } = req.query;
 
-    let filter = {};
-
-    if (role === "driver") {
-      filter.driverId = userId;
-    } else if (role === "client") {
-      filter.clientId = userId;
-    }
+    let filter = {
+      $or: [
+        { driverId: userId },
+        { clientId: userId }
+      ]
+    };
 
     if (status) {
-      filter.status = status.charAt(0).toUpperCase() + status.slice(1); // Capitalize
+      filter.status = status.charAt(0).toUpperCase() + status.slice(1);
     }
 
     const trips = await Trip.find(filter);
@@ -161,6 +160,7 @@ export const getMyTrips = async (req, res) => {
     });
   }
 };
+
 
 
 
