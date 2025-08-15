@@ -17,7 +17,7 @@ import {
   getTripById,
   updateTrip,
   deleteTrip,
-  ratePassenger
+  // ratePassenger
 } from "../controllers/drivertripController.js"
 
 const router = express.Router();
@@ -56,6 +56,6 @@ router.patch("/update/:id", updateTrip);
 
 router.delete("/delete/:id", deleteTrip);
 
-router.patch("/ratePassenger/:id", ratePassenger);
+// router.patch("/ratePassenger/:id", ratePassenger);
 
 export default router;
