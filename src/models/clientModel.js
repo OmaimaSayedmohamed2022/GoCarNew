@@ -17,6 +17,7 @@ const clientSchema = new mongoose.Schema({
   invitationCode: { type: String, required: true },
   otp: { type: String },
   isActive: { type: Boolean, default: false },
+  image:{type:String},
   reviews:[reviewSchema]
 }, { timestamps: true });
 
