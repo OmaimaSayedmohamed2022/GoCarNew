@@ -132,7 +132,7 @@ export const completeTrip = async (req, res) => {
 };
 
 // Get all trips for a client or driver
-const getTrips = async (req, res) => {
+const getMyTrips = async (req, res) => {
   try {
     const { role, userId, status } = req.query;
 
