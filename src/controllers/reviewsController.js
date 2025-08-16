@@ -32,7 +32,7 @@ export const getReviews = async (req, res) => {
     const { clientId } = req.params;
 
     const client = await Client.findById(clientId)
-      .populate('reviews.driver', 'name email image');
+      .populate('reviews.driver', 'name fullName image');
 
     if (!client) {
       return res.status(404).json({ message: 'Client not found' });
@@ -43,7 +43,7 @@ export const getReviews = async (req, res) => {
       (client.reviews.length || 1);
       
 // count reviews
-    const totalReviews = reviews.length;
+    const totalReviews = client.reviews.length;
 
     res.status(200).json({
       clientId: client._id,
