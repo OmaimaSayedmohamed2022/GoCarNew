@@ -8,6 +8,7 @@ import driverShiftRoutes from "./driverShiftRoutes.js"
 import drivertripRoutes from "./drivertripRoutes.js"
 import tripRoutes from "./tripRoutes.js"
 import reviewsRoutes from "./reviewsRoutes.js"
+import dashboardRoutes from "./dashboardRoutes.js"
 
 router.use("/driver", driverRoutes);
 router.use("/client", clientRoutes);
@@ -16,5 +17,6 @@ router.use("/driverShift", driverShiftRoutes);
 router.use("/drivertrip", drivertripRoutes);
 router.use("/trip", tripRoutes);
 router.use("/review", reviewsRoutes);
+router.use("/dashboard", dashboardRoutes)
 
 export default router;
