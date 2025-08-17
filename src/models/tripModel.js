@@ -12,6 +12,10 @@ const tripSchema = new mongoose.Schema({
     lat: Number,
     lng: Number,
   },
+  carType:{
+   type:String,
+   enum:["Economy","Large","VIP","Pet"]
+  },
   destination: {
     address: String,
     lat: Number,

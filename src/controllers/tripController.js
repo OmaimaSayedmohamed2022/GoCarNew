@@ -5,6 +5,7 @@ import DriverShift from "../models/driverShiftModel.js";
 import Driver from "../models/driverModel.js";
 import logger from "../utils/logger.js";
 import { generateCode } from '../utils/generateCode.js';
+import {calculateDistance,calculatePrice} from "../utils/calculatePrice.js"
 
 // Request a trip (client side, to be accepted by driver later)
 export const createTrip = async (req, res) => {
@@ -19,8 +20,7 @@ export const createTrip = async (req, res) => {
       scheduledAt,
       paymentMethod,
       rideType,
-      price,
-      driverShift, // optional for scheduled
+      driverShift,
       notes
     } = req.body;
 
@@ -29,6 +29,10 @@ export const createTrip = async (req, res) => {
     const status = isScheduled ? "Scheduled" : "Requested";
 
     const tripCode = generateCode();
+
+    const distanceKm = calculateDistance(currentLocation, destination);
+
+    const price = calculatePrice(carType, distanceKm);
 
     const trip = await Trip.create({
       client: userId,
@@ -50,12 +54,19 @@ export const createTrip = async (req, res) => {
       }
     });
 
-    res.status(201).json({ success: true, message: "Trip requested successfully", trip });
+    res.status(201).json({ 
+      success: true, 
+      message: "Trip requested successfully", 
+      price,
+      distanceKm,
+      trip 
+    });
   } catch (error) {
     logger.error("Error requesting trip:", error);
     res.status(500).json({ success: false, message: "Error requesting trip", error: error.message });
   }
 };
+
 
 // Accept trip (driver side)
 export const acceptTrip = async (req, res) => {
