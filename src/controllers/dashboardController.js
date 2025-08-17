@@ -35,3 +35,48 @@ export const summary = async (req, res) => {
   }
 }
 
+
+export const rideStatus=  async (req, res) => {
+  try {
+    const statusCounts = await Trip.aggregate([
+      { $group: { _id: "$status", count: { $sum: 1 } } },
+    ]);
+
+    const result = {
+      success: statusCounts.find(s => s._id === "success")?.count || 0,
+      failed: statusCounts.find(s => s._id === "failed")?.count || 0,
+      scheduled: statusCounts.find(s => s._id === "scheduled")?.count || 0,
+    };
+
+    res.json({ success: true, status: result });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+
+export const recentEarnings = async (req, res) => {
+  try {
+    const earnings = await Trip.find()
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .populate("driverId", "name");
+
+    const formatted = earnings.map(e => ({
+      date: e.createdAt.toISOString().split("T")[0],
+      driverName: e.driverId?.name,
+      totalFare: e.fare,
+      hisMoney: e.companyShare,
+    }));
+
+    res.json({ success: true, earnings: formatted });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+}
+
+
+
+
+
+

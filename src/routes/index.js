@@ -9,7 +9,10 @@ import drivertripRoutes from "./drivertripRoutes.js"
 import tripRoutes from "./tripRoutes.js"
 import reviewsRoutes from "./reviewsRoutes.js"
 import dashboardRoutes from "./dashboardRoutes.js"
+import carRoutes from "./carRoutes.js";
 
+
+router.use("/cars", carRoutes);
 router.use("/driver", driverRoutes);
 router.use("/client", clientRoutes);
 router.use("/auth", authRoutes);
