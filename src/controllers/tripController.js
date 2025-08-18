@@ -5,9 +5,8 @@ import DriverShift from "../models/driverShiftModel.js";
 import Driver from "../models/driverModel.js";
 import logger from "../utils/logger.js";
 import { generateCode } from '../utils/generateCode.js';
-import {calculateDistance,calculatePrice} from "../utils/calculatePrice.js"
+import { calculateDistance, calculatePrice } from "../utils/calculatePrice.js";
 
-// Request a trip (client side, to be accepted by driver later)
 export const createTrip = async (req, res) => {
   try {
     const {
@@ -24,15 +23,35 @@ export const createTrip = async (req, res) => {
       notes
     } = req.body;
 
+    // تحقق من المدخلات
+    if (!currentLocation?.lat || !currentLocation?.lng || !destination?.lat || !destination?.lng) {
+      return res.status(400).json({ success: false, message: "Invalid location data" });
+    }
+
+    if (!carType || !["Economy", "Large", "VIP", "Pet"].includes(carType)) {
+      return res.status(400).json({ success: false, message: "Invalid car type" });
+    }
+
     const now = new Date();
     const isScheduled = scheduledAt && new Date(scheduledAt) > now;
     const status = isScheduled ? "Scheduled" : "Requested";
 
     const tripCode = generateCode();
 
+    // حساب المسافة
     const distanceKm = calculateDistance(currentLocation, destination);
 
+    // نتأكد إن المسافة رقم صحيح
+    if (isNaN(distanceKm)) {
+      return res.status(400).json({ success: false, message: "Invalid distance calculation" });
+    }
+
+    // حساب السعر
     const price = calculatePrice(carType, distanceKm);
+
+    if (isNaN(price)) {
+      return res.status(400).json({ success: false, message: "Invalid price calculation" });
+    }
 
     const trip = await Trip.create({
       client: userId,
@@ -54,12 +73,12 @@ export const createTrip = async (req, res) => {
       }
     });
 
-    res.status(201).json({ 
-      success: true, 
-      message: "Trip requested successfully", 
+    res.status(201).json({
+      success: true,
+      message: "Trip requested successfully",
       price,
       distanceKm,
-      trip 
+      trip
     });
   } catch (error) {
     logger.error("Error requesting trip:", error);
