@@ -5,10 +5,9 @@ import DriverShift from "../models/driverShiftModel.js";
 import Driver from "../models/driverModel.js";
 import logger from "../utils/logger.js";
 import { generateCode } from '../utils/generateCode.js';
-import {calculateDistance,calculatePrice} from "../utils/calculatePrice.js"
+import { calculateDistance, calculatePrice } from "../utils/calculatePrice.js";
 
-// Request a trip (client side, to be accepted by driver later)
-export const createTrip = async (req, res) => {
+export const requestTrip = async (req, res) => {
   try {
     const {
       userId,
@@ -19,51 +18,47 @@ export const createTrip = async (req, res) => {
       destination,
       scheduledAt,
       paymentMethod,
-      rideType,
-      driverShift,
-      notes
     } = req.body;
 
-    const now = new Date();
-    const isScheduled = scheduledAt && new Date(scheduledAt) > now;
-    const status = isScheduled ? "Scheduled" : "Requested";
+    // ✅ extract lat/lng correctly
+    const loc1 = {
+      lat: currentLocation.coordinates[1],
+      lng: currentLocation.coordinates[0],
+    };
+    const loc2 = {
+      lat: destination.coordinates[1],
+      lng: destination.coordinates[0],
+    };
 
-    const tripCode = generateCode();
-
-    const distanceKm = calculateDistance(currentLocation, destination);
-
+    const distanceKm = calculateDistance(loc1, loc2);
     const price = calculatePrice(carType, distanceKm);
 
-    const trip = await Trip.create({
-      client: userId,
+    const trip = new Trip({
+      userId,
       carType,
       passengerNo,
       luggageNo,
       currentLocation,
       destination,
-      scheduledAt: isScheduled ? new Date(scheduledAt) : null,
-      status,
-      rideType,
-      price,
-      tripCode,
-      notes,
-      driverShift,
-      paymentInfo: {
-        method: paymentMethod || "Cash",
-        status: "Pending"
-      }
+      scheduledAt,
+      paymentMethod,
+      distance: distanceKm.toFixed(2),
+      price: price.toFixed(2),
     });
 
-    res.status(201).json({ 
-      success: true, 
-      message: "Trip requested successfully", 
-      price,
-      distanceKm,
-      trip 
+    await trip.save();
+
+    res.status(201).json({
+      success: true,
+      message: "Trip requested successfully",
+      trip,
     });
   } catch (error) {
-    logger.error("Error requesting trip:", error);
-    res.status(500).json({ success: false, message: "Error requesting trip", error: error.message });
+    res.status(400).json({
+      success: false,
+      message: "Error requesting trip",
+      error: error.message,
+    });
   }
 };
 
