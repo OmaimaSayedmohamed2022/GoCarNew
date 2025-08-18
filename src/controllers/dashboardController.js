@@ -9,7 +9,7 @@ import Client from "../models/clientModel.js";
 export const summary = async (req, res) => {
   try {
     const totalEarnings = await Trip.aggregate([
-      { $group: { _id: null, total: { $sum: "$fare" } } },
+      { $group: { _id: null, total: { $sum: "$price" } } },
     ]);
 
     const totalRides = await Trip.countDocuments();
@@ -19,6 +19,17 @@ export const summary = async (req, res) => {
     const onlineDrivers = await Driver.countDocuments({ status: "online" });
     const offlineDrivers = await Driver.countDocuments({ status: "offline" });
 
+
+
+     const ratings = await Trip.aggregate([
+      {
+        $group: {
+          _id: null,
+          totalRatings: { $sum: 1 },           
+          averageRating: { $avg: "$rating" }   
+        }
+      }
+    ]);
     res.json({
       success: true,
       data: {
@@ -28,12 +39,14 @@ export const summary = async (req, res) => {
         totalPassengers,
         onlineDrivers,
         offlineDrivers,
+        totalRatings: ratings[0]?.totalRatings || 0,
+        averageRating: ratings[0]?.averageRating?.toFixed(2) || 0
       },
     });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
-}
+};
 
 
 export const rideStatus=  async (req, res) => {
@@ -65,16 +78,55 @@ export const recentEarnings = async (req, res) => {
     const formatted = earnings.map(e => ({
       date: e.createdAt.toISOString().split("T")[0],
       driverName: e.driverId?.name,
-      totalFare: e.fare,
-      hisMoney: e.companyShare,
+      totalFare: e.price,        
+      hisMoney: e.companyShare,  
     }));
 
     res.json({ success: true, earnings: formatted });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
-}
+};
 
+
+export const topDriversByEarning = async (req, res) => {
+  try {
+    const topDrivers = await Trip.aggregate([
+      {
+        $group: {
+          _id: "$driverId",            
+          totalEarnings: { $sum: "$price" }, 
+          tripCount: { $sum: 1 }       
+        }
+      },
+
+      { $sort: { totalEarnings: -1 } }, 
+      { $limit: 6 },                    
+      {
+        $lookup: {                      
+          from: "drivers",               
+          localField: "_id",
+          foreignField: "_id",
+          as: "driver"
+        }
+      },
+      { $unwind: "$driver" },        
+      {
+        $project: {
+          _id: 0,
+          driverId: "$driver._id",
+          driverName: "$driver.name",
+          totalEarnings: 1,
+          tripCount: 1
+        }
+      }
+    ]);
+
+    res.json({ success: true, topDrivers });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
 
 
 
