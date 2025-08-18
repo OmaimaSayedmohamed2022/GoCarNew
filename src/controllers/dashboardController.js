@@ -19,16 +19,16 @@ export const summary = async (req, res) => {
     const onlineDrivers = await Driver.countDocuments({ status: "online" });
     const offlineDrivers = await Driver.countDocuments({ status: "offline" });
 
-    // إجمالي وعدد التقييمات (بس الرحلات اللي فيها rating)
-    const ratings = await Trip.aggregate([
-      { $match: { rating: { $ne: null } } }, 
+    
+    const driverRatings = await Driver.aggregate([
+      { $match: { rating: { $ne: null } } },
       {
         $group: {
           _id: null,
-          totalRatings: { $sum: 1 },           
-          averageRating: { $avg: "$rating" }   
-        }
-      }
+          totalRatings: { $sum: 1 },
+          averageRating: { $avg: "$rating" },
+        },
+      },
     ]);
 
     res.json({
@@ -40,8 +40,8 @@ export const summary = async (req, res) => {
         totalPassengers,
         onlineDrivers,
         offlineDrivers,
-        totalRatings: ratings[0]?.totalRatings || 0,
-        averageRating: ratings[0]?.averageRating?.toFixed(2) || 0
+         total: driverRatings[0]?.totalRatings || 0,
+        average: driverRatings[0]?.averageRating?.toFixed(2) || 0,
       },
     });
   } catch (err) {
