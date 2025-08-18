@@ -63,3 +63,25 @@ export const deleteCar = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+
+// Get Car by ID
+export const getCarById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const car = await Car.findById(id);
+
+    if (!car) {
+      return res.status(404).json({ message: "Car not found" });
+    }
+
+    res.status(200).json({
+      message: "Car fetched successfully",
+      data: car,
+    });
+  } catch (error) {
+    console.error("Error fetching car:", error);
+    res.status(500).json({ message: error.message });
+  }
+};

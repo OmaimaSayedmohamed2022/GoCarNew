@@ -1,4 +1,3 @@
-
 import Trip from "../models/tripModel.js";
 import Client from "../models/clientModel.js";
 import DriverShift from "../models/driverShiftModel.js";
@@ -7,6 +6,7 @@ import logger from "../utils/logger.js";
 import { generateCode } from '../utils/generateCode.js';
 import { calculateDistance, calculatePrice } from "../utils/calculatePrice.js";
 
+// Create Trip
 export const createTrip = async (req, res) => {
   try {
     const {
@@ -18,19 +18,27 @@ export const createTrip = async (req, res) => {
       destination,
       scheduledAt,
       paymentMethod,
-      rideType,
-      driverShift,
-      notes
     } = req.body;
 
-    // تحقق من المدخلات
-    if (!currentLocation?.lat || !currentLocation?.lng || !destination?.lat || !destination?.lng) {
-      return res.status(400).json({ success: false, message: "Invalid location data" });
-    }
-
+    // ✅ validate car type
     if (!carType || !["Economy", "Large", "VIP", "Pet"].includes(carType)) {
       return res.status(400).json({ success: false, message: "Invalid car type" });
     }
+
+    // ✅ validate locations
+    if (!currentLocation?.coordinates || !destination?.coordinates) {
+      return res.status(400).json({ success: false, message: "Invalid location data" });
+    }
+
+    // convert from GeoJSON to lat/lng
+    const loc1 = {
+      lat: currentLocation.coordinates[1],
+      lng: currentLocation.coordinates[0],
+    };
+    const loc2 = {
+      lat: destination.coordinates[1],
+      lng: destination.coordinates[0],
+    };
 
     const now = new Date();
     const isScheduled = scheduledAt && new Date(scheduledAt) > now;
@@ -38,17 +46,14 @@ export const createTrip = async (req, res) => {
 
     const tripCode = generateCode();
 
-    // حساب المسافة
-    const distanceKm = calculateDistance(currentLocation, destination);
-
-    // نتأكد إن المسافة رقم صحيح
+    // calculate distance
+    const distanceKm = calculateDistance(loc1, loc2);
     if (isNaN(distanceKm)) {
       return res.status(400).json({ success: false, message: "Invalid distance calculation" });
     }
 
-    // حساب السعر
+    // calculate price
     const price = calculatePrice(carType, distanceKm);
-
     if (isNaN(price)) {
       return res.status(400).json({ success: false, message: "Invalid price calculation" });
     }
@@ -61,16 +66,11 @@ export const createTrip = async (req, res) => {
       currentLocation,
       destination,
       scheduledAt: isScheduled ? new Date(scheduledAt) : null,
+      paymentMethod,
       status,
-      rideType,
-      price,
       tripCode,
-      notes,
-      driverShift,
-      paymentInfo: {
-        method: paymentMethod || "Cash",
-        status: "Pending"
-      }
+      distance: distanceKm.toFixed(2),
+      price: price.toFixed(2),
     });
 
     res.status(201).json({
@@ -78,14 +78,16 @@ export const createTrip = async (req, res) => {
       message: "Trip requested successfully",
       price,
       distanceKm,
-      trip
+      trip,
     });
   } catch (error) {
-    logger.error("Error requesting trip:", error);
-    res.status(500).json({ success: false, message: "Error requesting trip", error: error.message });
+    res.status(400).json({
+      success: false,
+      message: "Error requesting trip",
+      error: error.message,
+    });
   }
 };
-
 
 // Accept trip (driver side)
 export const acceptTrip = async (req, res) => {
@@ -101,7 +103,7 @@ export const acceptTrip = async (req, res) => {
     const driver = await Driver.findById(driverId);
     if (!driver) return res.status(404).json({ message: "Driver not found" });
 
-    if (trip.paymentInfo.method === "cash" && !driver.acceptCash) {
+    if (trip.paymentInfo?.method === "cash" && !driver.acceptCash) {
       return res.status(400).json({ message: "Driver does not accept cash payments" });
     }
 
@@ -118,7 +120,7 @@ export const acceptTrip = async (req, res) => {
   }
 };
 
-// Cancel trip (client or system)
+// Cancel trip
 export const cancelTrip = async (req, res) => {
   try {
     const { id } = req.params;
@@ -139,7 +141,7 @@ export const cancelTrip = async (req, res) => {
   }
 };
 
-// Complete trip (driver side)
+// Complete trip
 export const completeTrip = async (req, res) => {
   try {
     const { id } = req.params;
@@ -161,7 +163,7 @@ export const completeTrip = async (req, res) => {
   }
 };
 
-// Get all trips for a client or driver
+// Get my trips
 export const getMyTrips = async (req, res) => {
   try {
     const { userId, status } = req.query;
@@ -191,11 +193,7 @@ export const getMyTrips = async (req, res) => {
   }
 };
 
-
-
-
-
-// Update trip status manually (admin or internal use)
+// Update status (admin)
 export const updateTripStatus = async (req, res) => {
   try {
     const { id } = req.params;
@@ -218,8 +216,7 @@ export const updateTripStatus = async (req, res) => {
   }
 };
 
-
-
+// Rate Trip
 export const rateTrip = async (req, res) => {
   try {
     const { tripId } = req.params;

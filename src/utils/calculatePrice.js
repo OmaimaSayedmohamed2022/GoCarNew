@@ -1,15 +1,17 @@
 
+
 const carRates = {
   Economy: { base: 20, perKm: 5 },
   Large: { base: 30, perKm: 7 },
   VIP: { base: 50, perKm: 10 },
-  Pet: { base: 25, perKm: 6 }
+  Pet: { base: 25, perKm: 6 },
 };
 
 // Function to calculate distance between 2 points (Haversine Formula)
 function calculateDistance(loc1, loc2) {
   const toRad = (val) => (val * Math.PI) / 180;
   const R = 6371; // Radius of Earth in KM
+
   const dLat = toRad(loc2.lat - loc1.lat);
   const dLon = toRad(loc2.lng - loc1.lng);
 
@@ -26,6 +28,7 @@ function calculateDistance(loc1, loc2) {
 
 function calculatePrice(carType, distanceKm) {
   const rate = carRates[carType];
+  if (!rate) throw new Error(`Invalid carType: ${carType}`);
   return rate.base + rate.perKm * distanceKm;
 }
 
