@@ -1,4 +1,3 @@
-
 import Trip from "../models/tripModel.js";
 import Client from "../models/clientModel.js";
 import DriverShift from "../models/driverShiftModel.js";
@@ -7,7 +6,8 @@ import logger from "../utils/logger.js";
 import { generateCode } from '../utils/generateCode.js';
 import { calculateDistance, calculatePrice } from "../utils/calculatePrice.js";
 
-export const requestTrip = async (req, res) => {
+// Create Trip
+export const createTrip = async (req, res) => {
   try {
     const {
       userId,
@@ -20,7 +20,17 @@ export const requestTrip = async (req, res) => {
       paymentMethod,
     } = req.body;
 
-    // ✅ extract lat/lng correctly
+    // ✅ validate car type
+    if (!carType || !["Economy", "Large", "VIP", "Pet"].includes(carType)) {
+      return res.status(400).json({ success: false, message: "Invalid car type" });
+    }
+
+    // ✅ validate locations
+    if (!currentLocation?.coordinates || !destination?.coordinates) {
+      return res.status(400).json({ success: false, message: "Invalid location data" });
+    }
+
+    // convert from GeoJSON to lat/lng
     const loc1 = {
       lat: currentLocation.coordinates[1],
       lng: currentLocation.coordinates[0],
@@ -30,27 +40,44 @@ export const requestTrip = async (req, res) => {
       lng: destination.coordinates[0],
     };
 
-    const distanceKm = calculateDistance(loc1, loc2);
-    const price = calculatePrice(carType, distanceKm);
+    const now = new Date();
+    const isScheduled = scheduledAt && new Date(scheduledAt) > now;
+    const status = isScheduled ? "Scheduled" : "Requested";
 
-    const trip = new Trip({
-      userId,
+    const tripCode = generateCode();
+
+    // calculate distance
+    const distanceKm = calculateDistance(loc1, loc2);
+    if (isNaN(distanceKm)) {
+      return res.status(400).json({ success: false, message: "Invalid distance calculation" });
+    }
+
+    // calculate price
+    const price = calculatePrice(carType, distanceKm);
+    if (isNaN(price)) {
+      return res.status(400).json({ success: false, message: "Invalid price calculation" });
+    }
+
+    const trip = await Trip.create({
+      client: userId,
       carType,
       passengerNo,
       luggageNo,
       currentLocation,
       destination,
-      scheduledAt,
+      scheduledAt: isScheduled ? new Date(scheduledAt) : null,
       paymentMethod,
+      status,
+      tripCode,
       distance: distanceKm.toFixed(2),
       price: price.toFixed(2),
     });
 
-    await trip.save();
-
     res.status(201).json({
       success: true,
       message: "Trip requested successfully",
+      price,
+      distanceKm,
       trip,
     });
   } catch (error) {
@@ -61,7 +88,6 @@ export const requestTrip = async (req, res) => {
     });
   }
 };
-
 
 // Accept trip (driver side)
 export const acceptTrip = async (req, res) => {
@@ -77,7 +103,7 @@ export const acceptTrip = async (req, res) => {
     const driver = await Driver.findById(driverId);
     if (!driver) return res.status(404).json({ message: "Driver not found" });
 
-    if (trip.paymentInfo.method === "cash" && !driver.acceptCash) {
+    if (trip.paymentInfo?.method === "cash" && !driver.acceptCash) {
       return res.status(400).json({ message: "Driver does not accept cash payments" });
     }
 
@@ -94,7 +120,7 @@ export const acceptTrip = async (req, res) => {
   }
 };
 
-// Cancel trip (client or system)
+// Cancel trip
 export const cancelTrip = async (req, res) => {
   try {
     const { id } = req.params;
@@ -115,7 +141,7 @@ export const cancelTrip = async (req, res) => {
   }
 };
 
-// Complete trip (driver side)
+// Complete trip
 export const completeTrip = async (req, res) => {
   try {
     const { id } = req.params;
@@ -137,26 +163,37 @@ export const completeTrip = async (req, res) => {
   }
 };
 
-// Get all trips for a client or driver
+// Get my trips
 export const getMyTrips = async (req, res) => {
   try {
-    const { userId, role } = req.query;
-    const filter = role === "driver" ? { driverId: userId } : { client: userId };
+    const { userId, status } = req.query;
 
-    const trips = await Trip.find(filter)
-      .sort({ createdAt: -1 })
-      .populate("client driverId driverShift");
+    let filter = {
+      $or: [
+        { driverId: userId },
+        { client: userId }
+      ]
+    };
 
-    res.status(200).json({ success: true, trips });
+    if (status) {
+      filter.status = status.charAt(0).toUpperCase() + status.slice(1);
+    }
+
+    const trips = await Trip.find(filter);
+
+    res.json({
+      success: true,
+      trips,
+    });
   } catch (error) {
-    logger.error("Error fetching trips:", error);
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
 
-
-
-// Update trip status manually (admin or internal use)
+// Update status (admin)
 export const updateTripStatus = async (req, res) => {
   try {
     const { id } = req.params;
@@ -179,8 +216,7 @@ export const updateTripStatus = async (req, res) => {
   }
 };
 
-
-
+// Rate Trip
 export const rateTrip = async (req, res) => {
   try {
     const { tripId } = req.params;

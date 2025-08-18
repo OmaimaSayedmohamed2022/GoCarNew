@@ -1,5 +1,4 @@
 
-// utils/calculatePrice.js
 
 const carRates = {
   Economy: { base: 20, perKm: 5 },
