@@ -19,9 +19,9 @@ export const summary = async (req, res) => {
     const onlineDrivers = await Driver.countDocuments({ status: "online" });
     const offlineDrivers = await Driver.countDocuments({ status: "offline" });
 
-
-
-     const ratings = await Trip.aggregate([
+    // إجمالي وعدد التقييمات (بس الرحلات اللي فيها rating)
+    const ratings = await Trip.aggregate([
+      { $match: { rating: { $ne: null } } }, 
       {
         $group: {
           _id: null,
@@ -30,6 +30,7 @@ export const summary = async (req, res) => {
         }
       }
     ]);
+
     res.json({
       success: true,
       data: {
@@ -47,6 +48,7 @@ export const summary = async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 };
+
 
 
 export const rideStatus=  async (req, res) => {
