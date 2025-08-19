@@ -1,12 +1,8 @@
-// routes/dashboard.js
-import express from "express";
 import Trip from "../models/tripModel.js";
 import Driver from "../models/driverModel.js";
 import Client from "../models/clientModel.js";
 
-
-
-// Summary API
+// ✅ Summary API
 export const summary = async (req, res) => {
   try {
     const totalEarnings = await Trip.aggregate([
@@ -14,13 +10,14 @@ export const summary = async (req, res) => {
     ]);
 
     const totalRides = await Trip.countDocuments();
-    const totalDrivers = await Driver.countDocuments({ isApproved: "approved" }); // approved only
+    const totalDrivers = await Driver.countDocuments({ isApproved: "approved" });
     const totalPassengers = await Client.countDocuments();
 
     const onlineDrivers = await Driver.countDocuments({ status: "online", isApproved: "approved" });
     const offlineDrivers = await Driver.countDocuments({ status: "offline", isApproved: "approved" });
 
-    const ratings = await Trip.aggregate([
+    const driverRatings = await Driver.aggregate([
+      { $match: { rating: { $ne: null } } },
       {
         $group: {
           _id: null,
@@ -39,8 +36,8 @@ export const summary = async (req, res) => {
         totalPassengers,
         onlineDrivers,
         offlineDrivers,
-        totalRatings: ratings[0]?.totalRatings || 0,
-        averageRating: ratings[0]?.averageRating?.toFixed(2) || 0,
+        totalRatings: driverRatings[0]?.totalRatings || 0,
+        averageRating: driverRatings[0]?.averageRating?.toFixed(2) || 0,
       },
     });
   } catch (err) {
@@ -48,7 +45,7 @@ export const summary = async (req, res) => {
   }
 };
 
-// Ride Status API
+// ✅ Ride Status API
 export const rideStatus = async (req, res) => {
   try {
     const statusCounts = await Trip.aggregate([
@@ -67,7 +64,7 @@ export const rideStatus = async (req, res) => {
   }
 };
 
-// Recent Earnings API
+// ✅ Recent Earnings API
 export const recentEarnings = async (req, res) => {
   try {
     const earnings = await Trip.find()
@@ -76,11 +73,11 @@ export const recentEarnings = async (req, res) => {
       .populate({
         path: "driverId",
         select: "fullName",
-        match: { isApproved: "approved" }, // approved only
+        match: { isApproved: "approved" },
       });
 
     const formatted = earnings
-      .filter((e) => e.driverId) // remove trips with unapproved drivers
+      .filter((e) => e.driverId)
       .map((e) => ({
         date: e.createdAt.toISOString().split("T")[0],
         driverName: e.driverId?.fullName,
@@ -94,7 +91,7 @@ export const recentEarnings = async (req, res) => {
   }
 };
 
-// Top 6 Drivers by Earnings API
+// ✅ Top 6 Drivers by Earnings API
 export const topDriversByEarning = async (req, res) => {
   try {
     const topDrivers = await Trip.aggregate([
@@ -116,7 +113,7 @@ export const topDriversByEarning = async (req, res) => {
         },
       },
       { $unwind: "$driver" },
-      { $match: { "driver.isApproved": "approved" } }, // approved only
+      { $match: { "driver.isApproved": "approved" } },
       {
         $project: {
           _id: 0,
@@ -134,12 +131,12 @@ export const topDriversByEarning = async (req, res) => {
   }
 };
 
-// Get Drivers with carType filter API
+// ✅ Get Drivers with carType filter API
 export const getDrivers = async (req, res) => {
   try {
     const { carType } = req.query;
 
-    let filter = { isApproved: "approved" }; 
+    let filter = { isApproved: "approved" };
     if (carType && carType !== "All") {
       filter.carType = carType;
     }
@@ -156,11 +153,11 @@ export const getDrivers = async (req, res) => {
   }
 };
 
-// new drivers (pending)
+// ✅ New Drivers (pending)
 export const getAllNewDrivers = async (req, res) => {
   try {
     const newDrivers = await Driver.find(
-      { isApproved: "pending" },  
+      { isApproved: "pending" },
       { password: 0, __v: 0 }
     );
 
@@ -174,10 +171,7 @@ export const getAllNewDrivers = async (req, res) => {
   }
 };
 
-
-
-
-// approve driver 
+// ✅ Approve driver
 export const approveDriver = async (req, res) => {
   try {
     const { id } = req.params;
@@ -202,8 +196,7 @@ export const approveDriver = async (req, res) => {
   }
 };
 
-
-// reject driver
+// ✅ Reject driver
 export const rejectDriver = async (req, res) => {
   try {
     const { id } = req.params;
@@ -227,5 +220,3 @@ export const rejectDriver = async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 };
-
-
