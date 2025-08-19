@@ -130,5 +130,24 @@ export const topDriversByEarning = async (req, res) => {
 
 
 
+export const getDrivers = async (req, res) => {
+  try {
+    const { carType } = req.query; 
 
+    let filter = {};
+    if (carType && carType !== "All") {
+      filter.carType = carType;
+    }
+
+    const drivers = await Driver.find(filter).select("name carType status");
+
+    res.json({
+      success: true,
+      count: drivers.length,
+      data: drivers,
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
 
