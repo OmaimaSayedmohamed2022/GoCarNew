@@ -57,3 +57,35 @@ export const getReviews = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
+
+
+export const getDriverReviews = async (req, res) => {
+  try {
+    const { driverId } = req.params;
+
+    // Find all trips for this driver where a review exists
+    const trips = await Trip.find({ driver: driverId, rating: { $exists: true } })
+      .populate('client', 'name')
+      .sort({ createdAt: -1 });
+
+    const reviews = trips.map(trip => ({
+      clientName: trip.client.name,
+      tripCode: trip.tripCode,
+      rating: trip.rating,
+      review: trip.review,
+      date: trip.createdAt,
+    }));
+
+    // Calculate average rating
+    const totalRatings = trips.reduce((sum, trip) => sum + trip.rating, 0);
+    const avgRating = trips.length ? (totalRatings / trips.length).toFixed(1) : 0;
+
+    res.status(200).json({ 
+      totalReviews: reviews.length, 
+      averageRating: `${avgRating}/5`,
+      reviews 
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching driver reviews', error: error.message });
+  }
+};

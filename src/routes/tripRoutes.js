@@ -25,7 +25,7 @@ router.get('/', getMyTrips);
 // router.delete('/:id', deleteTrip);
 router.patch("/:id/cancel", cancelTrip);
 router.patch("/:id/complete", completeTrip);
-router.patch("/:id/rate", rateTrip);
+router.patch("/:tripId/rate", rateTrip);
 
 // payment
 router.post("/create-paypal", createPaypalPayment);
