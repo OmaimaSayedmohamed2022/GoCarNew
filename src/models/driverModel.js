@@ -10,10 +10,16 @@ const driverSchema = new mongoose.Schema({
   invitationCode: { type: String, required: true },
   licenseImage: { type: String },
   status: { type: String, enum: ["online", "offline"], default: "offline" },
+  
   acceptCash: { type: Boolean, default: true },
   trips: [{ type: mongoose.Schema.Types.ObjectId, ref: "Trip" }],
   otp: { type: String },
-  image:{type:String}
+  image:{type:String},
+   isApproved: {
+  type: String,
+  enum: ["pending", "approved", "rejected"], 
+  default: "pending",
+}
 }, { timestamps: true });
 
 export default mongoose.model("Driver", driverSchema);
