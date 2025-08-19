@@ -49,30 +49,40 @@ export const register = async (req, res) => {
     }
 }
 
-// get all drivers
+// get all drivers (approved only)
 export const getAllDrivers = async (req, res) => {
-    try {
-        const Drivers = await Driver.find({}, { "password": 0, "__v": 0 });
-        res.status(200).json({ success: true, data: Drivers });
-    }
-    catch (error) {
-        logger.error(`Error getting all Drivers: ${error.message}`);
-        res.status(500).json({ success: false, message: error.message });
-    }
-}
-
-// get driver by id
-export const getDriverById = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const driver = await Driver.findById(id, { password: 0, __v: 0 });
-
-        res.status(200).json({ success: true, data: driver });
-    } catch (error) {
-        logger.error(`Error getting driver by ID: ${error.message}`);
-        res.status(500).json({ success: false, message: "Server error" });
-    }
+  try {
+    const Drivers = await Driver.find(
+      { isApproved: "approved" },  // 
+      { password: 0, __v: 0 }
+    );
+    res.status(200).json({ success: true, data: Drivers });
+  } catch (error) {
+    logger.error(`Error getting all Drivers: ${error.message}`);
+    res.status(500).json({ success: false, message: error.message });
+  }
 };
+
+// get driver by id (only if approved)
+export const getDriverById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const driver = await Driver.findOne(
+      { _id: id, isApproved: "approved" },
+      { password: 0, __v: 0 }
+    );
+
+    if (!driver) {
+      return res.status(404).json({ success: false, message: "Driver not found or not approved" });
+    }
+
+    res.status(200).json({ success: true, data: driver });
+  } catch (error) {
+    logger.error(`Error getting driver by ID: ${error.message}`);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
 
 // update
 export const updateDriver = async (req, res) => {
