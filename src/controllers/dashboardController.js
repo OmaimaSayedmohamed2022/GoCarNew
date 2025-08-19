@@ -134,35 +134,30 @@ export const topDriversByEarning = async (req, res) => {
 
 export const filterByCarType = async (req, res) => {
   try {
-    const { carType } = req.query; // ?carType=VIP
+    const { carType } = req.query;
 
-    const filterStage = carType ? { "driver.carType": carType } : {};
+    const matchStage = carType ? { carType } : {};
 
     const result = await Trip.aggregate([
       {
         $lookup: {
-          from: "drivers", // اسم الكوليكشن بتاع Driver
+          from: "drivers", // اتأكد من اسم الكوليكشن بالظبط
           localField: "driverId",
           foreignField: "_id",
           as: "driver",
         },
       },
-      { $unwind: "$driver" }, // نفك الـ array
-
-      { $match: filterStage }, // نفلتر حسب carType لو موجود
-
+      { $unwind: "$driver" },
+      { $match: matchStage },
       {
         $group: {
           _id: "$driver._id",
-          name: { $first: "$driver.name" },
-          carType: { $first: "$driver.carType" },
+          name: { $first: "$driver.fullName" },
+          carType: { $first: "$carType" },
           totalEarnings: { $sum: "$price" },
           totalTrips: { $sum: 1 },
-          totalRatings: { $sum: { $size: { $ifNull: ["$driver.ratings", []] } } },
-          avgRating: { $avg: "$driver.averageRating" },
         },
       },
-      { $sort: { totalEarnings: -1 } }, // نرتبهم حسب الأعلي
     ]);
 
     res.json({
@@ -174,5 +169,6 @@ export const filterByCarType = async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 };
+
 
 
