@@ -1,4 +1,5 @@
 import Client from "../models/clientModel.js"
+import Trip from '../models/tripModel.js'
 
 //  add Review 
 export const addReview = async (req, res) => {
