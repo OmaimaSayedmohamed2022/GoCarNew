@@ -93,40 +93,35 @@ export const recentEarnings = async (req, res) => {
 
 export const topDriversByEarning = async (req, res) => {
   try {
-    const topDrivers = await Trip.aggregate([
+    const { carType } = req.query;
+
+    // Base match (if carType is sent, filter by it)
+    const matchStage = {};
+    if (carType && carType !== "All") {
+      matchStage.carType = carType;
+    }
+
+    // Aggregation pipeline
+    const topDrivers = await Driver.aggregate([
+      { $match: matchStage },
       {
         $group: {
-          _id: "$driverId",            
-          totalEarnings: { $sum: "$price" }, 
-          tripCount: { $sum: 1 }       
-        }
+          _id: "$driverId",
+          driverName: { $first: "$driverName" },
+          carType: { $first: "$carType" },
+          totalTrips: { $sum: 1 },
+          totalEarnings: { $sum: "$fare" },
+          avgRating: { $avg: "$rating" },
+        },
       },
-
-      { $sort: { totalEarnings: -1 } }, 
-      { $limit: 6 },                    
-      {
-        $lookup: {                      
-          from: "drivers",               
-          localField: "_id",
-          foreignField: "_id",
-          as: "driver"
-        }
-      },
-      { $unwind: "$driver" },        
-      {
-        $project: {
-          _id: 0,
-          driverId: "$driver._id",
-          driverName: "$driver.name",
-          totalEarnings: 1,
-          tripCount: 1
-        }
-      }
+      { $sort: { totalEarnings: -1 } }, // sort by earnings
+      { $limit: 10 }, // top 10 drivers
     ]);
 
-    res.json({ success: true, topDrivers });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    res.json({ success: true, data: topDrivers });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
