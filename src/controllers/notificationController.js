@@ -84,11 +84,12 @@ export const getNotifications = async (req, res) => {
     if (userType) filter.userType = userType; 
 
     const notifications = await Notification.find(filter)
-      .sort({ createdAt: -1 })
-      .populate({
-        path: "userId",
-        select: "name image" 
-      });
+    .sort({ createdAt: -1 })
+    .populate({
+    path: "userId",
+    model: filter.userType === "Driver" ? "Driver" : "Client",
+    select: "name image",
+  });
 
     res.status(200).json({
       success: true,
