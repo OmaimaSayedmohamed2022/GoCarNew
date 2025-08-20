@@ -10,6 +10,7 @@ import tripRoutes from "./tripRoutes.js"
 import reviewsRoutes from "./reviewsRoutes.js"
 import dashboardRoutes from "./dashboardRoutes.js"
 import carRoutes from "./carRoutes.js";
+import notificationRoutes from "./notificationRoutes.js"
 
 
 router.use("/cars", carRoutes);
@@ -21,5 +22,6 @@ router.use("/drivertrip", drivertripRoutes);
 router.use("/trip", tripRoutes);
 router.use("/review", reviewsRoutes);
 router.use("/dashboard", dashboardRoutes)
+router.use("/notification", notificationRoutes)
 
 export default router;
