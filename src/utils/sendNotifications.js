@@ -1,44 +1,31 @@
+
 import Notification from "../models/notificationModel.js";
 
-export const sendNotification = async (userId, title, body, type = "Trip", data = {}) => {
-  await Notification.create({
-    user: userId,
-    title,
-    body,
-    type,
-    data,
-  });
-};
-
-
-export const getMyNotifications = async (req, res) => {
+export const pushNotification = async (userId, userType, title, message, type = "system") => {
   try {
-    const { userId } = req.query;
-    const notifications = await Notification.find({ user: userId }).sort({ createdAt: -1 });
-
-    res.json({ success: true, notifications });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
-
-
-// Mark notification as read
-export const markNotificationAsRead = async (req, res) => {
-  try {
-    const { id } = req.params; // notificationId
-    const notification = await Notification.findByIdAndUpdate(
-      id,
-      { read: true },
-      { new: true }
-    );
-
-    if (!notification) {
-      return res.status(404).json({ success: false, message: "Notification not found" });
+    if (!userId) {
+      console.warn("pushNotification: missing userId, skipping", { title, userType });
+      return null;
+    }
+    if (!userType) {
+      console.warn("pushNotification: missing userType, skipping", { userId, title });
+      return null;
     }
 
-    res.json({ success: true, message: "Notification marked as read", notification });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    const doc = await Notification.create({
+      userId,
+      userType,
+      title,
+      message,
+      type
+    });
+
+  
+
+    console.log("pushNotification: created", { id: doc._id.toString(), userId, userType, title });
+    return doc;
+  } catch (err) {
+    console.error("pushNotification: error creating notification", err.message || err);
+    return null; // don't throw so main flow continues
   }
 };
