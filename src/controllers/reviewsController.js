@@ -1,4 +1,5 @@
 import Client from "../models/clientModel.js"
+import Trip from '../models/tripModel.js'
 
 //  add Review 
 export const addReview = async (req, res) => {
@@ -64,9 +65,9 @@ export const getDriverReviews = async (req, res) => {
     const { driverId } = req.params;
 
     // Find all trips for this driver where a review exists
-    const trips = await Trip.find({ driver: driverId, rating: { $exists: true } })
-      .populate('client', 'name')
-      .sort({ createdAt: -1 });
+   const trips = await Trip.find({ driverId: driverId, rating: { $exists: true } })
+  .populate('client', 'name')
+  .sort({ createdAt: -1 });
 
     const reviews = trips.map(trip => ({
       clientName: trip.client.name,
