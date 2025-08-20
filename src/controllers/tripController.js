@@ -5,6 +5,7 @@ import Notification from "../models/notificationModel.js";
 import logger from "../utils/logger.js";
 import { generateCode } from "../utils/generateCode.js";
 import { calculateDistance, calculatePrice } from "../utils/calculatePrice.js";
+import { pushNotification } from "../utils/sendNotifications.js";
 
 
 // ✅ Create Trip + Notify Client
@@ -76,11 +77,13 @@ export const createTrip = async (req, res) => {
 };
 
 
-// ✅ Accept Trip (Driver) + Notify Both
+// Accept trip
 export const acceptTrip = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { id } = req.params;        // tripId expected
     const { driverId } = req.body;
+
+    console.log("acceptTrip called", { tripId: id, driverId });
 
     const trip = await Trip.findById(id);
     if (!trip || trip.status !== "Requested") {
@@ -93,109 +96,97 @@ export const acceptTrip = async (req, res) => {
 
     await Driver.findByIdAndUpdate(driverId, { $push: { trips: trip._id } });
 
-    // 🔔 Notify client
-    await Notification.create({
-      userId: trip.client,
-      userType: "Client", 
-      title: "Trip Accepted",
-      message: `Your trip ${trip.tripCode} has been accepted by a driver.`,
-      type: "trip",
-    });
+    // notifications (use helper)
+    await pushNotification(trip.client, "Client", "Trip Accepted", `Your trip ${trip.tripCode} has been accepted by a driver.`, "trip");
+    await pushNotification(driverId, "Driver", "Trip Assigned", `You accepted trip ${trip.tripCode}.`, "trip");
 
-    // 🔔 Notify driver
-    await Notification.create({
-      userId: driverId,
-      userType: "Driver", 
-      title: "Trip Assigned",
-      message: `You have accepted trip ${trip.tripCode}.`,
-      type: "trip",
-    });
-
+    console.log("acceptTrip completed notifications pushed", { tripId: id });
     res.status(200).json({ success: true, message: "Trip accepted", trip });
   } catch (error) {
-    console.error("Error accepting trip:", error);
+    logger.error("Error accepting trip:", error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
 
-
-
-// ✅ Cancel Trip + Notify Client & Driver
+// Cancel trip
 export const cancelTrip = async (req, res) => {
   try {
     const { id } = req.params;
+    console.log("cancelTrip called", { tripId: id });
     const trip = await Trip.findById(id);
     if (!trip) return res.status(404).json({ success: false, message: "Trip not found" });
 
+    // optionally capture who cancels (req.user?) to send appropriate message
     trip.status = "Cancelled";
     await trip.save();
 
-    // 🔔 Notify client
-    await Notification.create({
-      userId: trip.client,
-      userType: "Client", 
-      title: "Trip Cancelled",
-      message: `Your trip ${trip.tripCode} has been cancelled.`,
-      type: "trip",
-    });
+    await pushNotification(trip.client, "Client", "Trip Cancelled", `Your trip ${trip.tripCode} has been cancelled.`, "trip");
 
-    // 🔔 Notify driver if assigned
     if (trip.driverId) {
-      await Notification.create({
-        userId: trip.driverId,
-        userType: "Driver", 
-        title: "Trip Cancelled",
-        message: `Trip ${trip.tripCode} has been cancelled by the client.`,
-        type: "trip",
-      });
+      await pushNotification(trip.driverId, "Driver", "Trip Cancelled", `Trip ${trip.tripCode} has been cancelled.`, "trip");
     }
 
+    console.log("cancelTrip notifications done", { tripId: id });
     res.status(200).json({ success: true, message: "Trip cancelled", trip });
   } catch (error) {
-    console.error("Error cancelling trip:", error);
+    logger.error("Error cancelling trip:", error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
 
+// Start trip (driver starts trip) - make sure route and status checks exist
+export const startTrip = async (req, res) => {
+  try {
+    const { id } = req.params; // tripId
+    const { driverId } = req.body;
+    console.log("startTrip called", { tripId: id, driverId });
 
-// ✅ Complete Trip + Notify Client & Driver
+    const trip = await Trip.findById(id);
+    if (!trip) return res.status(404).json({ success: false, message: "Trip not found" });
+    if (trip.driverId?.toString() !== driverId) {
+      return res.status(403).json({ success: false, message: "Not authorized to start this trip" });
+    }
+
+    trip.status = "Ongoing";
+    await trip.save();
+
+    await pushNotification(trip.client, "Client", "Trip Started", `Your trip ${trip.tripCode} has started.`, "trip");
+    await pushNotification(driverId, "Driver", "Trip In Progress", `You started trip ${trip.tripCode}.`, "trip");
+
+    console.log("startTrip notifications done", { tripId: id });
+    res.status(200).json({ success: true, message: "Trip started", trip });
+  } catch (error) {
+    logger.error("Error starting trip:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Complete trip
 export const completeTrip = async (req, res) => {
   try {
     const { id } = req.params;
+    console.log("completeTrip called", { tripId: id });
+
     const trip = await Trip.findById(id);
     if (!trip) return res.status(404).json({ success: false, message: "Trip not found" });
 
     trip.status = "Completed";
+    if (!trip.paymentInfo) trip.paymentInfo = {};
     trip.paymentInfo.status = "Paid";
     await trip.save();
 
-    // 🔔 Notify client
-    await Notification.create({
-      userId: trip.client,
-      userType: "Client", 
-      title: "Trip Completed",
-      message: `Your trip ${trip.tripCode} has been completed successfully.`,
-      type: "trip",
-    });
-
-    // 🔔 Notify driver
+    await pushNotification(trip.client, "Client", "Trip Completed", `Your trip ${trip.tripCode} has been completed.`, "trip");
     if (trip.driverId) {
-      await Notification.create({
-        userId: trip.driverId,
-        userType: "Driver", 
-        title: "Trip Completed",
-        message: `You have completed trip ${trip.tripCode}.`,
-        type: "trip",
-      });
+      await pushNotification(trip.driverId, "Driver", "Trip Completed", `You completed trip ${trip.tripCode}.`, "trip");
     }
 
+    console.log("completeTrip notifications done", { tripId: id });
     res.status(200).json({ success: true, message: "Trip completed", trip });
   } catch (error) {
-    console.error("Error completing trip:", error);
+    logger.error("Error completing trip:", error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
-
 
 // Get my trips
 export const getMyTrips = async (req, res) => {
