@@ -16,6 +16,6 @@ router.patch("/:id/read", markAsRead);
 router.delete("/:id",  deleteNotification);
 
 // Get all (dashboard/admin)
-router.get("/",  getAllNotifications);
+router.get("/",   getNotifications);
 
 export default router;
