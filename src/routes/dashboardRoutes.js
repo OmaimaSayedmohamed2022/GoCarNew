@@ -1,7 +1,7 @@
 import express from "express";
 import { summary,rideStatus ,recentEarnings, 
-     topDriversByEarning,approveDriver,rejectDriver,getAllNewDrivers
-     topDriversByEarning,filterByCarType
+     topDriversByEarning,approveDriver,rejectDriver,getAllNewDrivers,
+     filterByCarType
 
 
 } from "../controllers/dashboardController.js";
