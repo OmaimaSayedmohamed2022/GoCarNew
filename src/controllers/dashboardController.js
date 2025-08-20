@@ -220,3 +220,23 @@ export const rejectDriver = async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 };
+
+export const filterByCarType = async (req, res) => {
+  try {
+    const { carType } = req.query; 
+
+    let query = {};
+    if (carType && carType !== "All") {
+      query.carType = carType; 
+    }
+
+    const drivers = await Driver.find(query).select("name carType");
+
+    res.status(200).json({
+      count: drivers.length,
+      drivers,
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Error filtering drivers", error: error.message });
+  }
+};

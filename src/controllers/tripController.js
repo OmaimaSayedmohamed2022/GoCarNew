@@ -1,12 +1,13 @@
 import Trip from "../models/tripModel.js";
 import Client from "../models/clientModel.js";
-import DriverShift from "../models/driverShiftModel.js";
 import Driver from "../models/driverModel.js";
+import Notification from "../models/notificationModel.js";
 import logger from "../utils/logger.js";
-import { generateCode } from '../utils/generateCode.js';
+import { generateCode } from "../utils/generateCode.js";
 import { calculateDistance, calculatePrice } from "../utils/calculatePrice.js";
 
-// Create Trip
+
+// ✅ Create Trip + Notify Client
 export const createTrip = async (req, res) => {
   try {
     const {
@@ -20,43 +21,23 @@ export const createTrip = async (req, res) => {
       paymentMethod,
     } = req.body;
 
-    // ✅ validate car type
-    if (!carType || !["Economy", "Large", "VIP", "Pet"].includes(carType)) {
-      return res.status(400).json({ success: false, message: "Invalid car type" });
-    }
-
-    // ✅ validate locations
-    if (!currentLocation?.coordinates || !destination?.coordinates) {
-      return res.status(400).json({ success: false, message: "Invalid location data" });
-    }
-
-    // convert from GeoJSON to lat/lng
-    const loc1 = {
-      lat: currentLocation.coordinates[1],
-      lng: currentLocation.coordinates[0],
-    };
-    const loc2 = {
-      lat: destination.coordinates[1],
-      lng: destination.coordinates[0],
-    };
-
     const now = new Date();
     const isScheduled = scheduledAt && new Date(scheduledAt) > now;
     const status = isScheduled ? "Scheduled" : "Requested";
 
     const tripCode = generateCode();
 
-    // calculate distance
-    const distanceKm = calculateDistance(loc1, loc2);
-    if (isNaN(distanceKm)) {
-      return res.status(400).json({ success: false, message: "Invalid distance calculation" });
-    }
-
-    // calculate price
+    const distanceKm = calculateDistance(
+      {
+        lat: currentLocation.coordinates[1],
+        lng: currentLocation.coordinates[0],
+      },
+      {
+        lat: destination.coordinates[1],
+        lng: destination.coordinates[0],
+      }
+    );
     const price = calculatePrice(carType, distanceKm);
-    if (isNaN(price)) {
-      return res.status(400).json({ success: false, message: "Invalid price calculation" });
-    }
 
     const trip = await Trip.create({
       client: userId,
@@ -73,6 +54,14 @@ export const createTrip = async (req, res) => {
       price: price.toFixed(2),
     });
 
+    // 🔔 Notify client
+    await Notification.create({
+      userId,
+      title: "Trip Created",
+      message: `Your trip ${tripCode} has been ${status.toLowerCase()}.`,
+      type: "trip",
+    });
+
     res.status(201).json({
       success: true,
       message: "Trip requested successfully",
@@ -81,15 +70,13 @@ export const createTrip = async (req, res) => {
       trip,
     });
   } catch (error) {
-    res.status(400).json({
-      success: false,
-      message: "Error requesting trip",
-      error: error.message,
-    });
+    logger.error("Error creating trip:", error);
+    res.status(400).json({ success: false, message: error.message });
   }
 };
 
-// Accept trip (driver side)
+
+// ✅ Accept Trip (Driver) + Notify Both
 export const acceptTrip = async (req, res) => {
   try {
     const { id } = req.params;
@@ -97,14 +84,7 @@ export const acceptTrip = async (req, res) => {
 
     const trip = await Trip.findById(id);
     if (!trip || trip.status !== "Requested") {
-      return res.status(400).json({ success: false, message: "Trip not available for acceptance" });
-    }
-
-    const driver = await Driver.findById(driverId);
-    if (!driver) return res.status(404).json({ message: "Driver not found" });
-
-    if (trip.paymentInfo?.method === "cash" && !driver.acceptCash) {
-      return res.status(400).json({ message: "Driver does not accept cash payments" });
+      return res.status(400).json({ success: false, message: "Trip not available" });
     }
 
     trip.driverId = driverId;
@@ -113,6 +93,22 @@ export const acceptTrip = async (req, res) => {
 
     await Driver.findByIdAndUpdate(driverId, { $push: { trips: trip._id } });
 
+    // 🔔 Notify client
+    await Notification.create({
+      userId: trip.client,
+      title: "Trip Accepted",
+      message: `Your trip ${trip.tripCode} has been accepted by a driver.`,
+      type: "trip",
+    });
+
+    // 🔔 Notify driver
+    await Notification.create({
+      userId: driverId,
+      title: "Trip Assigned",
+      message: `You have accepted trip ${trip.tripCode}.`,
+      type: "trip",
+    });
+
     res.status(200).json({ success: true, message: "Trip accepted", trip });
   } catch (error) {
     logger.error("Error accepting trip:", error);
@@ -120,19 +116,34 @@ export const acceptTrip = async (req, res) => {
   }
 };
 
-// Cancel trip
+
+// ✅ Cancel Trip + Notify Client & Driver
 export const cancelTrip = async (req, res) => {
   try {
     const { id } = req.params;
     const trip = await Trip.findById(id);
     if (!trip) return res.status(404).json({ success: false, message: "Trip not found" });
 
-    if (["Completed", "Cancelled"].includes(trip.status)) {
-      return res.status(400).json({ success: false, message: "Trip cannot be cancelled" });
-    }
-
     trip.status = "Cancelled";
     await trip.save();
+
+    // 🔔 Notify client
+    await Notification.create({
+      userId: trip.client,
+      title: "Trip Cancelled",
+      message: `Your trip ${trip.tripCode} has been cancelled.`,
+      type: "trip",
+    });
+
+    // 🔔 Notify driver if assigned
+    if (trip.driverId) {
+      await Notification.create({
+        userId: trip.driverId,
+        title: "Trip Cancelled",
+        message: `Trip ${trip.tripCode} has been cancelled by the client.`,
+        type: "trip",
+      });
+    }
 
     res.status(200).json({ success: true, message: "Trip cancelled", trip });
   } catch (error) {
@@ -141,20 +152,35 @@ export const cancelTrip = async (req, res) => {
   }
 };
 
-// Complete trip
+
+// ✅ Complete Trip + Notify Client & Driver
 export const completeTrip = async (req, res) => {
   try {
     const { id } = req.params;
     const trip = await Trip.findById(id);
     if (!trip) return res.status(404).json({ success: false, message: "Trip not found" });
 
-    if (trip.status !== "Ongoing" && trip.status !== "Accepted") {
-      return res.status(400).json({ success: false, message: "Trip is not in progress" });
-    }
-
     trip.status = "Completed";
     trip.paymentInfo.status = "Paid";
     await trip.save();
+
+    // 🔔 Notify client
+    await Notification.create({
+      userId: trip.client,
+      title: "Trip Completed",
+      message: `Your trip ${trip.tripCode} has been completed successfully.`,
+      type: "trip",
+    });
+
+    // 🔔 Notify driver
+    if (trip.driverId) {
+      await Notification.create({
+        userId: trip.driverId,
+        title: "Trip Completed",
+        message: `You have completed trip ${trip.tripCode}.`,
+        type: "trip",
+      });
+    }
 
     res.status(200).json({ success: true, message: "Trip completed", trip });
   } catch (error) {
@@ -190,29 +216,6 @@ export const getMyTrips = async (req, res) => {
       success: false,
       message: error.message,
     });
-  }
-};
-
-// Update status (admin)
-export const updateTripStatus = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { status } = req.body;
-
-    const allowedStatuses = ["Requested", "Accepted", "Ongoing", "Cancelled", "Completed", "Scheduled"];
-    if (!allowedStatuses.includes(status)) {
-      return res.status(400).json({ success: false, message: "Invalid trip status" });
-    }
-
-    const trip = await Trip.findByIdAndUpdate(id, { status }, { new: true });
-    if (!trip) {
-      return res.status(404).json({ success: false, message: "Trip not found" });
-    }
-
-    res.status(200).json({ success: true, message: "Trip status updated", trip });
-  } catch (error) {
-    logger.error("Error updating trip status:", error);
-    res.status(500).json({ success: false, message: error.message });
   }
 };
 
