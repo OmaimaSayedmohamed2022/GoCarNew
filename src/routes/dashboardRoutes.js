@@ -2,7 +2,7 @@ import express from "express";
 
 import { summary,rideStatus ,recentEarnings, 
      topDriversByEarning,approveDriver,rejectDriver,getAllNewDrivers,
-     filterByCarType
+     filterByCarType,getDrivers
 
 
 
