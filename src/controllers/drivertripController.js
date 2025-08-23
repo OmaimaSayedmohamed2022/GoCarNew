@@ -129,17 +129,20 @@ export const getScheduledTrips = async (req, res) => {
 // Get Trip by ID
 export const getTripById = async (req, res) => {
   try {
-    const trip = await Trip.findOne({ _id: req.params.id, driverId: req.user.id })
+    const trip = await Trip.findById(req.params.id)
       .populate("client")
       .populate("driverId");
+
     if (!trip) {
       return res.status(404).json({ message: "Trip not found" });
     }
+
     res.status(200).json(trip);
   } catch (error) {
     res.status(500).json({ message: "Error fetching trip", error: error.message });
   }
 };
+
 
 // Update Trip
 export const updateTrip = async (req, res) => {
