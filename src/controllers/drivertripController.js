@@ -249,9 +249,8 @@ export const getScheduledTripsTomorrow = async (req, res) => {
 export const getNewTrips = async (req, res) => {
   try {
     const trips = await Trip.find({
-      driver: driverId,
       status: "Requested"
-    }).populate("client driverId");
+    }).populate("client");
 
     res.status(200).json(trips);
   } catch (error) {
