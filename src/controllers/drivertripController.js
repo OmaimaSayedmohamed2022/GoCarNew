@@ -251,7 +251,7 @@ export const getNewTrips = async (req, res) => {
     const { driverId } = req.params;
     const trips = await Trip.find({
       driver: driverId,
-      status: "Pending"
+      status: "Requested"
     }).populate("passenger driver");
 
     res.status(200).json(trips);
