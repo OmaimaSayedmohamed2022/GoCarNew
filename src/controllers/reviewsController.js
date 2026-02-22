@@ -66,7 +66,7 @@ export const getDriverReviews = async (req, res) => {
 
     // Find all trips for this driver where a review exists
    const trips = await Trip.find({ driverId: driverId, rating: { $exists: true } })
-  .populate('client', 'name')
+  .populate('client', 'fullName')
   .sort({ createdAt: -1 });
 
     const reviews = trips.map(trip => ({
