@@ -70,7 +70,7 @@ export const getDriverReviews = async (req, res) => {
   .sort({ createdAt: -1 });
 
     const reviews = trips.map(trip => ({
-      clientName: trip.client.name,
+      clientName: trip.client?.fullName || 'Unknown Client',
       tripCode: trip.tripCode,
       rating: trip.rating,
       review: trip.review,
